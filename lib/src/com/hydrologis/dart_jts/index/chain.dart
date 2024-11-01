@@ -374,7 +374,7 @@ class MonotoneChainBuilder {
    * @param pts the list of points to compute chains for
    * @return a list of the monotone chains for the points
    */
-  static List getChains(List<Coordinate> pts) {
+  static List<MonotoneChainI> getChains(List<Coordinate> pts) {
     return getChainsWithContext(pts, null);
   }
 
@@ -387,8 +387,8 @@ class MonotoneChainBuilder {
    * @param context a data object to attach to each chain
    * @return a list of the monotone chains for the points
    */
-  static List getChainsWithContext(List<Coordinate> pts, Object? context) {
-    List mcList = [];
+  static List<MonotoneChainI> getChainsWithContext(List<Coordinate> pts, Object? context) {
+    List<MonotoneChainI> mcList = [];
     int chainStart = 0;
     do {
       int chainEnd = findChainEnd(pts, chainStart);

@@ -449,6 +449,38 @@ class BufferOp {
   }
   */
 
+  static Geometry bufferByZero(Geometry geom, bool isBothOrientations) {
+    //--- compute buffer using maximum signed-area orientation
+    Geometry buf0 = geom.buffer(0);
+    if (!isBothOrientations) return buf0;
+
+    //-- compute buffer using minimum signed-area orientation
+    BufferOp op = BufferOp(geom);
+    op.isInvertOrientation = true;
+    Geometry buf0Inv = op.getResultGeometry(0);
+
+    //-- the buffer results should be non-adjacent, so combining is safe
+    return combine(buf0, buf0Inv);
+  }
+
+  static Geometry combine(Geometry poly0, Geometry poly1) {
+    // short-circuit - handles case where geometry is valid
+    if (poly1.isEmpty()) return poly0;
+    if (poly0.isEmpty()) return poly1;
+
+    List<Polygon> polys = [];
+    extractPolygons(poly0, polys);
+    extractPolygons(poly1, polys);
+    if (polys.length == 1) return polys[0];
+    return poly0.getFactory().createMultiPolygon(polys);
+  }
+
+  static void extractPolygons(Geometry poly0, List<Polygon> polys) {
+    for (int i = 0; i < poly0.getNumGeometries(); i++) {
+      polys.add(poly0.getGeometryN(i) as Polygon);
+    }
+  }
+
   /**
    * Computes the buffer of a geometry for a given buffer distance.
    *

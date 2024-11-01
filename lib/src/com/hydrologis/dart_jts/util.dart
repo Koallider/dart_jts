@@ -48,7 +48,7 @@ class CollectionsUtils {
         newList.add(list[i - 1]);
       }
     }
-    if (newList.last != list.last) {
+    if (newList.isEmpty || newList.last != list.last) {
       newList.add(list.last);
     }
     return newList;

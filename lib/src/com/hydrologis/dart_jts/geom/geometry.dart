@@ -1366,8 +1366,7 @@ abstract class Geometry implements Comparable {
    * @see UnaryUnionOp
    */
   Geometry union() {
-    throw UnimplementedError("Not implemented yet"); // TODO
-//    return UnaryUnionOp.union(this);
+    return UnaryUnionOp.unionFromGeometry(this);
   }
 
   /**

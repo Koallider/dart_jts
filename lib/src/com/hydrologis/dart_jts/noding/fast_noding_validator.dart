@@ -45,7 +45,7 @@ class FastNodingValidator
 
   List<SegmentString> segStrings;
   bool findAllIntersections = false;
-  late NodingIntersectionFinder segInt;
+  NodingIntersectionFinder? segInt;
   bool isValid = true;
 
   /**
@@ -69,7 +69,7 @@ class FastNodingValidator
    */
   List getIntersections()
   {
-    return segInt.getIntersections();
+    return segInt!.getIntersections();
   }
 
   /**
@@ -94,7 +94,7 @@ class FastNodingValidator
   {
     if (isValid) return "no intersections found";
 
-    List<Coordinate> intSegs = segInt.getIntersectionSegments();
+    List<Coordinate> intSegs = segInt!.getIntersectionSegments();
     return "found non-noded intersection between "
         + WKTWriter.toLineString([intSegs[0], intSegs[1]])
         + " and "
@@ -116,7 +116,7 @@ class FastNodingValidator
 
   void execute()
   {
-    if (segInt.count() > 0)
+    if (segInt != null && segInt!.count() > 0)
       return;
     checkInteriorIntersections();
   }
@@ -130,11 +130,11 @@ class FastNodingValidator
      */
     isValid = true;
     segInt = NodingIntersectionFinder(li);
-    segInt.setFindAllIntersections(findAllIntersections);
-    MCIndexNoder noder = new MCIndexNoder(segInt);
-    noder.setSegmentIntersector(segInt);
+    segInt!.setFindAllIntersections(findAllIntersections);
+    MCIndexNoder noder = new MCIndexNoder(segInt!);
+    noder.setSegmentIntersector(segInt!);
     noder.computeNodes(segStrings);
-    if (segInt.hasIntersection()) {
+    if (segInt!.hasIntersection()) {
       isValid = false;
       return;
     }

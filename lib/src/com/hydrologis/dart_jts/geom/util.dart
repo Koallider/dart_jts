@@ -1151,7 +1151,8 @@ class PrecisionModel implements Comparable {
 
   /// The scale factor which determines the number of decimal places in fixed precision.
   double scale = 0.0;
-  double gridSize=1;
+  double gridSize = 1;
+
   /// Creates a <code>PrecisionModel</code> with a default precision
   /// of FLOATING.
   PrecisionModel() {
@@ -1255,8 +1256,7 @@ class PrecisionModel implements Comparable {
     if (scale < 0) {
       gridSize = scale.abs();
       this.scale = 1.0 / gridSize;
-    }
-    else {
+    } else {
       this.scale = scale.abs();
       /**
        * Leave gridSize as 0, to ensure it is computed using scale
@@ -1616,7 +1616,7 @@ class PolygonExtracter implements GeometryFilter {
   /// and returns them in a {@link List}.
   ///
   /// @param geom the geometry from which to extract
-  static List getPolygons(Geometry geom) {
+  static List<Polygon> getPolygons(Geometry geom) {
     return getPolygonsWithList(geom, <Polygon>[]);
   }
 
@@ -1930,7 +1930,6 @@ abstract class CoordinateSequenceOperation implements GeometryEditorOperation {
   CoordinateSequence editSeq(CoordinateSequence coordSeq, Geometry geometry);
 }
 
-
 /**
  * A framework for processes which transform an input {@link Geometry} into
  * an output {@link Geometry}, possibly changing its structure and type(s).
@@ -1974,9 +1973,9 @@ class GeometryTransformer {
    * getParent() method to return immediate parent e.g. of LinearRings in Polygons
    */
 
- late Geometry inputGeom;
+  late Geometry inputGeom;
 
-  late  GeometryFactory factory;
+  late GeometryFactory factory;
 
   // these could eventually be exposed to clients
   /**
@@ -2016,7 +2015,8 @@ class GeometryTransformer {
     this.inputGeom = inputGeom;
     this.factory = inputGeom.getFactory();
 
-    if (inputGeom is Point) return transformPoint(inputGeom as Point,inputGeom );
+    if (inputGeom is Point)
+      return transformPoint(inputGeom as Point, inputGeom);
     if (inputGeom is MultiPoint)
       return transformMultiPoint(inputGeom as MultiPoint, inputGeom);
     if (inputGeom is LinearRing)
@@ -2030,7 +2030,8 @@ class GeometryTransformer {
     if (inputGeom is MultiPolygon)
       return transformMultiPolygon(inputGeom as MultiPolygon, inputGeom);
     if (inputGeom is GeometryCollection)
-      return transformGeometryCollection(inputGeom as GeometryCollection, inputGeom);
+      return transformGeometryCollection(
+          inputGeom as GeometryCollection, inputGeom);
 
     throw new Exception("Unknown Geometry subtype: ");
   }
@@ -2081,7 +2082,7 @@ class GeometryTransformer {
     List<Geometry> transGeomList = [];
     for (int i = 0; i < geom.getNumGeometries(); i++) {
       Geometry transformGeom =
-      transformPoint(geom.getGeometryN(i) as Point, geom);
+          transformPoint(geom.getGeometryN(i) as Point, geom);
       if (transformGeom.isEmpty()) continue;
       transGeomList.add(transformGeom);
     }
@@ -2106,7 +2107,7 @@ class GeometryTransformer {
    */
   Geometry transformLinearRing(LinearRing geom, Geometry parent) {
     CoordinateSequence seq =
-    transformCoordinates(geom.getCoordinateSequence(), geom);
+        transformCoordinates(geom.getCoordinateSequence(), geom);
     if (seq.size() == 0) return factory.createLinearRingEmpty();
     int seqSize = seq.size();
     // ensure a valid LinearRing
@@ -2132,7 +2133,7 @@ class GeometryTransformer {
     List<Geometry> transGeomList = [];
     for (int i = 0; i < geom.getNumGeometries(); i++) {
       Geometry transformGeom =
-      transformLineString(geom.getGeometryN(i) as LineString, geom);
+          transformLineString(geom.getGeometryN(i) as LineString, geom);
       if (transformGeom.isEmpty()) continue;
       transGeomList.add(transformGeom);
     }
@@ -2167,7 +2168,8 @@ class GeometryTransformer {
     }
 
     if (isAllValidLinearRings)
-      return factory.createPolygon(shell as LinearRing, holes.cast<LinearRing>());
+      return factory.createPolygon(
+          shell as LinearRing, holes.cast<LinearRing>());
     else {
       List<Geometry> components = [];
       components.add(shell);
@@ -2180,7 +2182,7 @@ class GeometryTransformer {
     List<Geometry> transGeomList = [];
     for (int i = 0; i < geom.getNumGeometries(); i++) {
       Geometry transformGeom =
-      transformPolygon(geom.getGeometryN(i) as Polygon, geom);
+          transformPolygon(geom.getGeometryN(i) as Polygon, geom);
       if (transformGeom == null) continue;
       if (transformGeom.isEmpty()) continue;
       transGeomList.add(transformGeom);
@@ -2206,3 +2208,297 @@ class GeometryTransformer {
   }
 }
 
+class GeometryCombiner {
+  GeometryFactory? geomFactory;
+  bool skipEmpty = false;
+  List<Geometry> inputGeoms;
+
+  GeometryCombiner(this.inputGeoms)
+      : geomFactory = extractFactory(inputGeoms);
+
+  static GeometryFactory? extractFactory(List<Geometry> geoms) {
+    if (geoms.isEmpty) return null;
+    return geoms.first.getFactory();
+  }
+
+  Geometry? _combine() {
+    List<Geometry> elems = [];
+    for (Geometry g in inputGeoms) {
+      extractElements(g, elems);
+    }
+
+    if (elems.isEmpty) {
+      if (geomFactory != null) {
+        return geomFactory!.createGeometryCollectionEmpty();
+      }
+      return null;
+    }
+    return geomFactory?.buildGeometry(elems);
+  }
+
+  void extractElements(Geometry geom, List<Geometry> elems) {
+    if (geom == null) return;
+
+    for (int i = 0; i < geom.getNumGeometries(); i++) {
+      Geometry elemGeom = geom.getGeometryN(i);
+      if (skipEmpty && elemGeom.isEmpty()) continue;
+      elems.add(elemGeom);
+    }
+  }
+
+  static Geometry? combine(List<Geometry> geoms) {
+    GeometryCombiner combiner = GeometryCombiner(geoms);
+    return combiner._combine();
+  }
+
+  static Geometry? combine2(Geometry g0, Geometry g1) {
+    GeometryCombiner combiner = GeometryCombiner([g0, g1]);
+    return combiner._combine();
+  }
+
+  static Geometry? combine3(Geometry g0, Geometry g1, Geometry g2) {
+    GeometryCombiner combiner = GeometryCombiner([g0, g1, g2]);
+    return combiner._combine();
+  }
+}
+
+
+class GeometryFixer {
+  static const bool DEFAULT_KEEP_MULTI = true;
+
+  static Geometry fix(Geometry geom, {bool isKeepMulti = DEFAULT_KEEP_MULTI}) {
+    GeometryFixer fix = GeometryFixer(geom);
+    fix.setKeepMulti(isKeepMulti);
+    return fix.getResult();
+  }
+
+  Geometry geom;
+  GeometryFactory factory;
+  bool isKeepCollapsed = false;
+  bool isKeepMulti = DEFAULT_KEEP_MULTI;
+
+  GeometryFixer(this.geom) : this.factory = geom.getFactory();
+
+  void setKeepCollapsed(bool isKeepCollapsed) {
+    this.isKeepCollapsed  = isKeepCollapsed;
+  }
+
+  void setKeepMulti(bool isKeepMulti) {
+    this.isKeepMulti  = isKeepMulti;
+  }
+
+  Geometry getResult() {
+    if (geom.getNumGeometries() == 0) {
+      return geom.copy();
+    }
+
+  /*  if (geom is Point)              return fixPoint(geom);
+    if (geom is LinearRing)         return fixLinearRing(geom);*/
+    if (geom is LineString)         return fixLineString(geom as LineString)!;//todo null
+    if (geom is Polygon)            return fixPolygonElement(geom as Polygon)!;
+    if (geom is MultiPolygon)       return fixMultiPolygon(geom as MultiPolygon)!;
+    if (geom is MultiLineString)    return fixMultiLineString(geom as MultiLineString)!;
+    /* if (geom is MultiPoint)         return fixMultiPoint(geom);
+
+    if (geom is GeometryCollection) return fixCollection(geom);*/
+    throw Exception('Unsupported Geometry Type: ${geom.runtimeType}');
+  }
+
+  Geometry? fixMultiLineString(MultiLineString geom) {
+    List<LineString> fixed = [];
+    bool isMixed = false;
+
+    for (int i = 0; i < geom.getNumGeometries(); i++) {
+      LineString line = geom.getGeometryN(i) as LineString;
+      if (line.isEmpty()) continue;
+
+      LineString? fix = fixLineStringElement(line) as LineString?;
+      if (fix == null) continue;
+
+      /*if (fix is! LineString) {
+        isMixed = true;
+      }*/
+      fixed.add(fix);
+    }
+
+    if (fixed.length == 1) {
+      if (!this.isKeepMulti || fixed[0] is! LineString) {
+        return fixed[0];
+      }
+    }
+
+    if (isMixed) {//todo mixed multiline
+      return factory.createGeometryCollection(fixed);
+    }
+
+    return factory.createMultiLineString(fixed);
+  }
+
+  Geometry fixLineString(LineString geom) {
+    Geometry? fix = fixLineStringElement(geom);
+    if (fix == null) {
+      return factory.createLineStringEmpty();
+    }
+    return fix;
+  }
+
+  Geometry? fixLineStringElement(LineString geom) {
+    if (geom.isEmpty()) return null;
+    List<Coordinate> pts = geom.getCoordinates();
+    List<Coordinate> ptsFix = fixCoordinates(pts);
+    if (this.isKeepCollapsed && ptsFix.length == 1) {
+      return factory.createPoint(ptsFix[0]);
+    }
+    if (ptsFix.length <= 1) {
+      return null;
+    }
+    return factory.createLineString(ptsFix);
+  }
+
+  List<Coordinate> fixCoordinates(List<Coordinate> pts) {
+    List<Coordinate> ptsClean = CoordinateArrays.removeRepeatedOrInvalidPoints(pts);
+    return CoordinateArrays.copyDeep(ptsClean);
+  }
+
+  Geometry fixMultiPolygon(MultiPolygon geom) {
+    List<Geometry> polys = [];
+    for (int i = 0; i < geom.getNumGeometries(); i++) {
+      Polygon poly = geom.getGeometryN(i) as Polygon;
+      Geometry polyFix = fixPolygonElement(poly);
+      if (polyFix != null && !polyFix.isEmpty()) {
+        polys.add(polyFix);
+      }
+    }
+    if (polys.isEmpty) {
+      return factory.createMultiPolygonEmpty();
+    }
+    //Geometry result = union(polys);
+
+    List<Polygon> unwrappedPolys = [];
+    for(Geometry geometry in polys){
+      for(int i =0; i < geometry.getNumGeometries(); i++){
+        unwrappedPolys.add(geometry.getGeometryN(i) as Polygon);
+      }
+    }
+    Geometry  result = factory.createMultiPolygon(unwrappedPolys);
+
+    return result;
+  }
+
+/*
+  Geometry fixPolygon(Polygon geom) {
+    Geometry? fix = fixPolygonElement(geom);
+    if (fix == null)
+      return factory.createPolygonEmpty();
+    return fix;
+  }
+*/
+
+  Geometry fixPolygonElement(Polygon geom) {
+    LinearRing shell = geom.getExteriorRing();
+    Geometry fixShell = fixRing(shell);
+    GeometryFactory geometryFactory = GeometryFactory.defaultPrecision();
+    if (fixShell.isEmpty()) {
+      if (this.isKeepCollapsed) {
+        geometryFactory.createPolygonEmpty();//todo fix LineString
+      }
+      //--- if not allowing collapses then return empty polygon
+      return geometryFactory.createPolygonEmpty();
+    }
+    //--- if no holes then done
+    if (geom.getNumInteriorRing() == 0) {
+      return fixShell.getGeometryN(0);
+    }
+
+    //--- fix holes, classify, and construct shell-true holes
+    List<Geometry> holesFixed = fixHoles(geom);
+
+    List<Geometry> holes = [];
+    List<Geometry> shells = [];
+    classifyHoles(fixShell, holesFixed, holes, shells);
+
+/*    Geometry? polyWithHoles = difference(fixShell, holes);
+
+    var firstPoly= polyWithHoles!.getGeometryN(0).getCoordinates().map((e) => "[${e.x}, ${e.y}]",).toList();
+    print("first poly: ${firstPoly}");
+    var secondPoly= polyWithHoles!.getGeometryN(1).getCoordinates().map((e) => "[${e.x}, ${e.y}]",).toList();
+    print("secondPoly poly: ${secondPoly}");*/
+
+    var filteredShells = [];
+    for(Geometry shell in shells){
+      var area = shell.getArea();
+      if(area > 0.000004){
+        filteredShells.add(shell);
+      }
+    }
+
+    if (filteredShells.length == 0) {
+      return fixShell.getGeometryN(0);
+    }
+
+    //--- if some holes converted to shells, union all shells
+    //shells.add(polyWithHoles!);
+   // (fixShell as MultiPolygon).geometries.addAll(shells.map(toElement));
+    //((polyWithHoles as MultiPolygon).getGeometryN(0) as Polygon).holes = shells.map((e) => ((e as MultiPolygon).getGeometryN(0) as Polygon).getExteriorRing(),).toList();
+   // Geometry result = difference(polyWithHoles, shells)!;
+    return MultiPolygon.withFactory([fixShell.getGeometryN(0) as Polygon, ...filteredShells.map((e) => e.getGeometryN(0) as Polygon)], factory);
+  }
+
+  Geometry? difference(Geometry shell, List<Geometry>? holes) {
+    if (holes == null || holes.isEmpty)
+      return shell;
+    Geometry holesUnion = union(holes);
+    return OverlayNGRobust.overlay(shell, holesUnion, OverlayNG.DIFFERENCE);
+  }
+
+  Geometry union(List<Geometry> polys) {
+    if (polys.length == 0) return factory.createPolygonEmpty();
+    if (polys.length == 1) {
+      return polys[0];
+    }
+    // TODO: replace with holes.union() once OverlayNG is the default
+    return OverlayNGRobust.unionFromCollection(polys);
+  }
+
+  Geometry fixRing(LinearRing ring) {
+    // always execute fix, since it may remove repeated/invalid coords etc
+    // TODO: would it be faster to check ring validity first?
+    Geometry poly = factory.createPolygonFromRing(ring);
+    return BufferOp.bufferByZero(poly, true);
+  }
+
+  List<Geometry> fixHoles(Polygon geom) {
+    List<Geometry> holes = [];
+    for (int i = 0; i < geom.getNumInteriorRing(); i++) {
+      Geometry? holeRep = fixRing(geom.getInteriorRingN(i));
+      if (holeRep != null) {
+        holes.add(holeRep);
+      }
+    }
+    return holes;
+  }
+
+  //todo
+  void classifyHoles(Geometry shell, List<Geometry> holesFixed, List<Geometry> holes, List<Geometry> shells) {
+    PreparedPolygon shellPrep = PreparedPolygon(shell);
+    for (Geometry hole in holesFixed) {
+      if (shellPrep.intersects(hole)) {
+        holes.add(hole);
+      } else {
+        shells.add(hole);
+      }
+    }
+  }
+}
+
+class SegmentStringUtil {
+  static List<NodedSegmentString> extractNodedSegmentStrings(Geometry geom) {
+    List<NodedSegmentString> segStr = [];
+    List<LineString> lines = LinearComponentExtracter.getLines(geom).map((e) => e as LineString,).toList();
+    for (LineString line in lines) {
+      List<Coordinate> pts = line.getCoordinates();
+      segStr.add(NodedSegmentString(pts, geom));
+    }
+    return segStr;
+  }
+}

@@ -25,6 +25,11 @@ class TopologyException implements Exception {
   Coordinate? getCoordinate() {
     return pt;
   }
+
+  @override
+  String toString() {
+    return "Topology Exception: ${msg} at ${pt?.x} ${pt?.y}";
+  }
 }
 
 /// Compares two {@link CoordinateSequence}s.

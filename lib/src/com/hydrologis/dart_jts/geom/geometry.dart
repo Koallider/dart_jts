@@ -1198,33 +1198,34 @@ abstract class Geometry implements Comparable {
    * @throws TopologyException if a robustness error occurs
    * @throws IllegalArgumentException if the argument is a non-empty heterogeneous <code>GeometryCollection</code>
    */
-  Geometry intersection(Geometry other) {
-    throw UnimplementedError("Not implemented yet"); // TODO
-//    /**
-//     * TODO: MD - add optimization for P-A case using Point-In-Polygon
-//     */
-//    // special case: if one input is empty ==> empty
-//    if (this.isEmpty() || other.isEmpty())
-//      return OverlayOp.createEmptyResult(OverlayOp.INTERSECTION, this, other, factory);
-//
-//    // compute for GCs
-//    // (An inefficient algorithm, but will work)
-//    // TODO: improve efficiency of computation for GCs
-//    if (this.isGeometryCollection()) {
-//      final Geometry g2 = other;
-//      return GeometryCollectionMapper.map(
-//          (GeometryCollection) this,
-//          new GeometryMapper.MapOp() {
-//      Geometry map(Geometry g) {
-//      return g.intersection(g2);
-//      }
-//      });
-//    }
-//
-//    // No longer needed since GCs are handled by previous code
-//    //checkNotGeometryCollection(this);
-//    //checkNotGeometryCollection(other);
-//    return SnapIfNeededOverlayOp.overlayOp(this, other, OverlayOp.INTERSECTION);
+  Geometry? intersection(Geometry other) {
+     /**
+      * TODO: MD - add optimization for P-A case using Point-In-Polygon
+      */
+     // special case: if one input is empty ==> empty
+     if (this.isEmpty() || other.isEmpty())
+       return OverlayOp.createEmptyResult(OverlayOp.INTERSECTION, this, other, geomFactory);
+
+     // compute for GCs
+     // (An inefficient algorithm, but will work)
+     // TODO: improve efficiency of computation for GCs
+
+     //todo geometry collection
+     // if (this.isGeometryCollection()) {
+     //   final Geometry g2 = other;
+     //   return GeometryCollectionMapper.map(
+     //       (GeometryCollection) this,
+     //       new GeometryMapper.MapOp() {
+     //   Geometry map(Geometry g) {
+     //   return g.intersection(g2);
+     //   }
+     //   });
+     // }
+
+     // No longer needed since GCs are handled by previous code
+     //checkNotGeometryCollection(this);
+     //checkNotGeometryCollection(other);
+     return SnapIfNeededOverlayOp.overlayOp(this, other, OverlayOp.INTERSECTION);
   }
 
   /**

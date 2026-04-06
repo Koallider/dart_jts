@@ -6,7 +6,13 @@ class CascadedPolygonUnion {
       try {
         return SnapIfNeededOverlayOp.union(g0, g1);
       } catch (e) {
-        return OverlayNGRobust.overlay(g0, g1, OverlayNG.UNION);
+        var g0fixed = GeometryFixer.fix(g0);
+        var g1Fixed = GeometryFixer.fix(g1);
+        try {
+          return SnapIfNeededOverlayOp.union(g0fixed, g1Fixed);
+        } catch (e) {
+          return OverlayNGRobust.overlay(g0, g1, OverlayNG.UNION);
+        }
       }
     },
     isFloatingPrecision: () => true,
@@ -35,7 +41,8 @@ class CascadedPolygonUnion {
 
 
     STRtree tree = STRtree.withCapacity(STRTREE_NODE_CAPACITY);
-    inputPolys!.forEach((element) => tree.insert(element.getEnvelopeInternal(), element),);
+    inputPolys!.forEach((element) =>
+        tree.insert(element.getEnvelopeInternal(), element),);
 
     // To avoiding holding memory remove references to the input geometries,
     inputPolys = null;
@@ -47,12 +54,15 @@ class CascadedPolygonUnion {
   }
 
   static Geometry? union(List<Geometry> polys) {
-    CascadedPolygonUnion op = CascadedPolygonUnion(polys.map((e) => e as Polygon).toList());
+    CascadedPolygonUnion op = CascadedPolygonUnion(
+        polys.map((e) => e as Polygon).toList());
     return op._union();
   }
 
-  static Geometry? unionWithStrategy(List<Geometry> polys, UnionStrategy unionFun) {
-    CascadedPolygonUnion op = CascadedPolygonUnion(polys.map((e) => e as Polygon).toList(), unionFun: unionFun);
+  static Geometry? unionWithStrategy(List<Geometry> polys,
+      UnionStrategy unionFun) {
+    CascadedPolygonUnion op = CascadedPolygonUnion(
+        polys.map((e) => e as Polygon).toList(), unionFun: unionFun);
     return op._union();
   }
 
@@ -71,8 +81,8 @@ class CascadedPolygonUnion {
       } else if (o is Geometry) {
         geom = o;
       }
-      if(geom != null){
-      geoms.add(geom);
+      if (geom != null) {
+        geoms.add(geom);
       }
     }
     return geoms;
@@ -87,7 +97,8 @@ class CascadedPolygonUnion {
       Geometry? g0 = getGeometry(geoms, start);
       return unionSafe(g0, null);
     } else if (end - start == 2) {
-      return unionSafe(getGeometry(geoms, start), getGeometry(geoms, start + 1));
+      return unionSafe(
+          getGeometry(geoms, start), getGeometry(geoms, start + 1));
     } else {
       int mid = (end + start) ~/ 2;
       Geometry? g0 = binaryUnionRange(geoms, start, mid);
@@ -112,7 +123,8 @@ class CascadedPolygonUnion {
   }
 
   Geometry unionActual(Geometry g0, Geometry g1) {
-    Geometry union = unionFun.union(g0, g1)!;//TODO NULL GEOMETRY RETURNS CHECK ON ALL STACK
+    Geometry union = unionFun.union(
+        g0, g1)!; //TODO NULL GEOMETRY RETURNS CHECK ON ALL STACK
     Geometry unionPoly = restrictToPolygons(union);
     return unionPoly;
   }

@@ -426,10 +426,9 @@ abstract class Geometry implements Comparable {
    * @return a {@link Point} which is in the interior of this Geometry
    */
   Point getInteriorPoint() {
-    throw UnimplementedError("not implemented yet");
-//    if (isEmpty()) return factory.createPoint();
-//    Coordinate pt = InteriorPoint.getInteriorPoint(this);
-//    return createPointFromInternalCoord(pt, this);
+      if (isEmpty()) return geomFactory.createPointEmpty();
+      Coordinate? pt = InteriorPoint.getInteriorPoint(this);
+      return createPointFromInternalCoord(pt, this);
   }
 
   /**
@@ -1786,8 +1785,10 @@ abstract class Geometry implements Comparable {
 
   int getSortIndex();
 
-  Point createPointFromInternalCoord(Coordinate coord, Geometry exemplar) {
-    exemplar.getPrecisionModel().makeCoordinatePrecise(coord);
+  Point createPointFromInternalCoord(Coordinate? coord, Geometry exemplar) {
+    if(coord != null) {
+      exemplar.getPrecisionModel().makeCoordinatePrecise(coord);
+    }
     return exemplar.getFactory().createPoint(coord);
   }
 }

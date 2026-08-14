@@ -2099,7 +2099,10 @@ class ValidatingNoder implements Noder {
   @override
   void computeNodes(List segStrings) {
     _noder.computeNodes(segStrings);
-    nodedSS = _noder.getNodedSubstrings() as List<SegmentString>;
+    nodedSS = _noder
+        .getNodedSubstrings()
+        .map((e) => e as SegmentString)
+        .toList();
     _validate();
   }
 

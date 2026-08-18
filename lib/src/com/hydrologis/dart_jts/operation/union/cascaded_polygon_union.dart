@@ -3,51 +3,20 @@ part of dart_jts;
 class CascadedPolygonUnion {
   static final UnionStrategy CLASSIC_UNION = UnionStrategy(
     union: (Geometry g0, Geometry g1) {
-      return _unionRobust(g0, g1);
+      try {
+        return SnapIfNeededOverlayOp.union(g0, g1);
+      } catch (e) {
+        var g0fixed = GeometryFixer.fix(g0);
+        var g1Fixed = GeometryFixer.fix(g1);
+        try {
+          return SnapIfNeededOverlayOp.union(g0fixed, g1Fixed);
+        } catch (e) {
+          return OverlayNGRobust.overlay(g0, g1, OverlayNG.UNION);
+        }
+      }
     },
     isFloatingPrecision: () => true,
   );
-
-  static Geometry _fixGeometry(Geometry geom) {
-    try {
-      return GeometryFixer.fix(geom);
-    } catch (_) {
-      return geom;
-    }
-  }
-
-  /// Overlay can fail on nearly-coincident / invalid polygons.
-  /// Keep trying progressively safer strategies so cascaded union does not abort.
-  static Geometry _unionRobust(Geometry g0, Geometry g1) {
-    try {
-      Geometry? result = SnapIfNeededOverlayOp.union(g0, g1);
-      if (result != null) return result;
-    } catch (_) {}
-
-    Geometry a = _fixGeometry(g0);
-    Geometry b = _fixGeometry(g1);
-    try {
-      Geometry? result = SnapIfNeededOverlayOp.union(a, b);
-      if (result != null) return result;
-    } catch (_) {}
-
-    try {
-      Geometry? result = OverlayNGRobust.overlay(a, b, OverlayNG.UNION);
-      if (result != null) return result;
-    } catch (_) {}
-
-    try {
-      Geometry? result = OverlayNGRobust.overlay(
-          a.buffer(0), b.buffer(0), OverlayNG.UNION);
-      if (result != null) return result;
-    } catch (_) {}
-
-    try {
-      return g0.geomFactory.createGeometryCollection([a, b]).buffer(0);
-    } catch (_) {
-      return a.getArea() >= b.getArea() ? a : b;
-    }
-  }
 
   List<Polygon>? inputPolys;
   GeometryFactory? geomFactory;
